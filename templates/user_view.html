@@ -1,0 +1,23 @@
+{% extends "main.html" %}
+
+{% macro attribute(name, value) %}
+  <dt>{{ name }}</dt>
+  <dd>{{ value }}</dd>
+{% endmacro %}
+
+{% block main %}
+  <dl class="dl-horizontal">
+    {{ attribute("Login", user.uid) }}
+    {{ attribute("Vorname", user.givenName) }}
+    {{ attribute("Nachname", user.sn) }}
+    {{ attribute("E-Mail", user.uid) }}
+    {{ attribute("Erstellt um", user.createTimestamp|datetimeformat) }}
+    {{ attribute("Geändert um", user.modifyTimestamp|datetimeformat) }}
+  </dl>
+  <p>Gruppen</p>
+  <ul>
+    {% for group in groups %}
+      <li><a href="{{ url_for('.view_group', group.cn) }}">{{ group.cn }}</a></li>
+    {% endfor %}
+  </ul>
+{% endblock %}

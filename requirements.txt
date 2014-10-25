@@ -1,0 +1,7 @@
+Flask
+Flask-WTF
+Flask-Babel
+passlib
+python-ldap
+ldappool
+wrapt

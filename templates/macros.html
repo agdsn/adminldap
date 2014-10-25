@@ -1,0 +1,34 @@
+{% macro render_field(field) %}
+  <div class="form-group">
+    {{ field.label(class_='col-sm-4 control-label')|safe }}
+    <div class="col-sm-8">
+      {{ field(class_='form-control')|safe }}
+      {% for error in field.errors %}
+        <p class="help-block">{{ error }}</p>
+      {% endfor %}
+    </div>
+  </div>
+{% endmacro %}
+
+{% macro form(form) %}
+  <div class="row">
+    <div class="col-sm-6">
+      <form class="form-horizontal" accept-charset="UTF-8" method="post" role="form">
+        {% for field in form %}
+          {% if field.type in ['StringField', 'PasswordField'] %}
+            {{ render_field(field) }}
+          {% elif field.type in ['HiddenField', 'CSRFTokenField'] %}
+            {{ field() }}
+          {% else %}
+            <div class="alert alert-danger">Unbekannter Feldtyp: {{ field.type }}</div>
+          {% endif %}
+        {% endfor %}
+        <div class="form-group">
+          <div class="col-sm-offset-4 col-sm-8">
+            <button type="submit" class="btn btn-default">Erstellen</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endmacro %}
