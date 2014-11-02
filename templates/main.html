@@ -33,12 +33,9 @@
           </div>
           <div class="navbar-collapse collapse">
             <ul class="nav navbar-nav">
-              <li><a href="{{ url_for('.index') }}">Ich</a></li>
-              <li><a href="{{ url_for('.view_users') }}">Benutzer</a></li>
-              <li><a href="{{ url_for('.view_groups') }}">Gruppen</a></li>
-            </ul>
-            <ul class="nav navbar-nav navbar-right">
-              <li class="active"><a href="./">Abmelden</a></li>
+              <li><a href="{{ url_for('.manage_self') }}">Selbst</a></li>
+              <li><a href="{{ url_for('.list_users') }}">Benutzer</a></li>
+              <li><a href="{{ url_for('.list_groups') }}">Gruppen</a></li>
             </ul>
           </div><!--/.nav-collapse -->
         </div><!--/.container-fluid -->
@@ -47,8 +44,8 @@
       {% block main %}{% endblock %}
     </div> <!-- /container -->
 
-
     <script src="{{ url_for('static', filename='jquery/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='underscore.js') }}"></script>
     <script src="{{ url_for('static', filename='bootstrap/js/bootstrap.min.js') }}"></script>
     <script src="{{ url_for('static', filename='bootstrap-table/bootstrap-table.min.js') }}"></script>
     <script src="{{ url_for('static', filename='bootstrap-table/locale/bootstrap-table-de-DE.js') }}"></script>

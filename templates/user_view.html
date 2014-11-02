@@ -1,23 +1,64 @@
 {% extends "main.html" %}
+{% import "macros.html" as macros %}
 
 {% macro attribute(name, value) %}
-  <dt>{{ name }}</dt>
-  <dd>{{ value }}</dd>
+  <div class="form-group">
+    <label class="control-label col-sm-4">{{ name }}</label>
+    <div class="col-sm-8">
+      <p class="form-control-static">{{ value }}</p>
+    </div>
+  </div>
 {% endmacro %}
 
 {% block main %}
-  <dl class="dl-horizontal">
-    {{ attribute("Login", user.uid) }}
-    {{ attribute("Vorname", user.givenName) }}
-    {{ attribute("Nachname", user.sn) }}
-    {{ attribute("E-Mail", user.uid) }}
-    {{ attribute("Erstellt um", user.createTimestamp|datetimeformat) }}
-    {{ attribute("Geändert um", user.modifyTimestamp|datetimeformat) }}
-  </dl>
-  <p>Gruppen</p>
-  <ul>
-    {% for group in groups %}
-      <li><a href="{{ url_for('.view_group', group.cn) }}">{{ group.cn }}</a></li>
-    {% endfor %}
-  </ul>
+  <h1>Benutzer {{ user.uid }}</h1>
+  <div class="row">
+    <form class="form-horizontal" role="form">
+      <div class="col-md-6">
+        {{ attribute("Login", user.uid) }}
+        {{ attribute("Vorname", user.givenName) }}
+        {{ attribute("Nachname", user.sn) }}
+        {{ attribute("E-Mail", user.uid) }}
+        {{ attribute("Erstellt um", user.createTimestamp|datetimeformat) }}
+        {{ attribute("Geändert um", user.modifyTimestamp|datetimeformat) }}
+      </div>
+    </form>
+  </div>
+
+  <h2>Gruppen</h2>
+  <form role="form" accept-charset="utf-8" method="post" action="{{ url_for('.remove_from_groups', uid=user.uid) }}">
+    {{ form.csrf_token }}
+    <div id="toolbar" class="btn-toolbar" role="toolbar">
+      <div class="btn-group">
+        <a class="btn btn-default" href="{{ url_for('.add_to_groups', uid=user.uid) }}">
+          <span class="glyphicon glyphicon-plus-sign"></span> Hinzufügen
+        </a>
+        <button type="submit" class="btn btn-default">
+          <span class="glyphicon glyphicon-trash"></span> Löschen
+        </button>
+      </div>
+    </div>
+    <table class="table table-striped"
+           data-toggle="table"
+           data-cache="false"
+           data-url="{{ url_for('.list_groups_of', uid=user.uid) }}"
+           data-response-handler="responseHandler"
+           data-id-field="dn"
+           data-search="true"
+           data-pagination="true"
+           data-toolbar="#toolbar"
+           data-click-to-select="true"
+           data-select-item-name="{{ form.dns.name }}">
+      <thead>
+        <tr>
+          <th data-checkbox="true"></th>
+          <th data-field="cn" data-sortable="true">Name</th>
+        </tr>
+      </thead>
+    </table>
+  </form>
+{% endblock %}
+
+{% block page_script %}
+  {{ macros.item_table_script([]) }}
 {% endblock %}

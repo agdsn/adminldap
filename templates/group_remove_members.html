@@ -1,0 +1,10 @@
+{% extends "main.html" %}
+
+{% block main %}
+  <h1>Fehler</h1>
+  {% for field in form %}
+    {% for error in field.errors %}
+      <p class="help-block">{{ error }}</p>
+    {% endfor %}
+  {% endfor %}
+{% endblock %}

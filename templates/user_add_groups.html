@@ -2,25 +2,26 @@
 {% import "macros.html" as macros %}
 
 {% block main %}
-  <h1>Gruppe {{ group.cn }}</h1>
+  <h1>Benutzer {{ user.uid }} zu Gruppen hinzufügen</h1>
 
-  <h2>Mitglieder</h2>
-  <form role="form" accept-charset="utf-8" method="post" action="{{ url_for('.remove_members', cn=group.cn) }}">
+  {% for field in form %}
+    {% for error in field.errors %}
+      <p class="help-block">{{ error }}</p>
+    {% endfor %}
+  {% endfor %}
+  <form role="form" accept-charset="utf-8" method="post">
     {{ form.csrf_token }}
     <div id="toolbar" class="btn-toolbar" role="toolbar">
       <div class="btn-group">
-        <a class="btn btn-default" href="{{ url_for('.add_members', cn=group.cn) }}">
-          <span class="glyphicon glyphicon-plus-sign"></span> Hinzufügen
-        </a>
         <button type="submit" class="btn btn-default">
-          <span class="glyphicon glyphicon-trash"></span> Löschen
+          <span class="glyphicon glyphicon-plus-sign"></span> Hinzufügen
         </button>
       </div>
     </div>
     <table class="table table-striped"
            data-toggle="table"
            data-cache="false"
-           data-url="{{ url_for('.list_members', cn=group.cn) }}"
+           data-url="{{ url_for('.list_non_groups_of', uid=user.uid) }}"
            data-response-handler="responseHandler"
            data-id-field="dn"
            data-search="true"
@@ -31,9 +32,7 @@
       <thead>
         <tr>
           <th data-checkbox="true"></th>
-          <th data-field="uid" data-sortable="true">Login</th>
-          <th data-field="givenName" data-sortable="true">Vorname</th>
-          <th data-field="sn" data-sortable="true">Nachname</th>
+          <th data-field="cn" data-sortable="true">Name</th>
         </tr>
       </thead>
     </table>

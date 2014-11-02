@@ -1,36 +1,25 @@
 {% extends 'main.html' %}
+{% import "macros.html" as macros %}
+{% set itemActions = {
+    'view': {
+        'title': "Ansehen",
+        'glyphicon': 'glyphicon-eye-open',
+    },
+    'edit': {
+        'title': "Bearbeiten",
+        'glyphicon': 'glyphicon-pencil',
+    },
+    'delete': {
+        'title': "Löschen",
+        'glyphicon': 'glyphicon-trash',
+    }
+} %}
 
 {% block main %}
-  <h1>Benutzer</h1>
-  <div id="toolbar" class="btn-toolbar" role="toolbar">
-    <div class="btn-group">
-      <a class="btn btn-default" href="{{ url_for('.create_user') }}"><span class="glyphicon glyphicon-plus-sign"></span> Hinzufügen</a>
-    </div>
-  </div>
-  <table class="table table-striped" data-toggle="table" data-cache="false" data-url="{{ url_for('.view_users') }}" data-response-handler="responseHandler" data-id-field="uid" data-search="true" data-pagination="true" data-sort-name="givenName" data-toolbar="#toolbar">
-    <thead>
-      <tr>
-        <th data-field="uid" data-sortable="true">Login</th>
-        <th data-field="givenName" data-sortable="true">Vorname</th>
-        <th data-field="sn" data-sortable="true">Nachname</th>
-        <th data-field="mail" data-sortable="true">E-Mail</th>
-        <th data-field="createTimestamp" data-sortable="true">Erstellt um</th>
-        <th data-field="modifyTimestamp" data-sortable="true">Geändert um</th>
-        <th data-formatter="actionFormatter">Aktionen</th>
-      </tr>
-    </thead>
-  </table>
+  <h1>Benutzerübersicht</h1>
+  {{ macros.user_table() }}
 {% endblock %}
 
 {% block page_script %}
-  <script type="application/javascript">
-    function responseHandler(response) {
-      return response.users;
-    }
-    function actionFormatter(value, row, index) {
-      return ('<a class="btn btn-default" href="' + row.viewUrl + '"><span class="glyphicon glyphicon-eye-open"></span></a>'
-              + '<a class="btn btn-default" href="' + row.editUrl + '"><span class="glyphicon glyphicon-pencil"></span></a>'
-              + '<a class="btn btn-default" href="' + row.deleteUrl + '"><span class="glyphicon glyphicon-trash"></span></a>');
-    }
-  </script>
+  {{ macros.item_table_script(itemActions) }}
 {% endblock %}

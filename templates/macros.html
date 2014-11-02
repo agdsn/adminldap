@@ -1,8 +1,8 @@
 {% macro render_field(field) %}
   <div class="form-group">
-    {{ field.label(class_='col-sm-4 control-label')|safe }}
-    <div class="col-sm-8">
-      {{ field(class_='form-control')|safe }}
+    {{ field.label(class_='col-md-4 control-label') }}
+    <div class="col-md-8">
+      {{ field(class_='form-control') }}
       {% for error in field.errors %}
         <p class="help-block">{{ error }}</p>
       {% endfor %}
@@ -10,12 +10,12 @@
   </div>
 {% endmacro %}
 
-{% macro form(form) %}
+{% macro form(form, submit_to, submit_text='Erstellen') %}
   <div class="row">
-    <div class="col-sm-6">
-      <form class="form-horizontal" accept-charset="UTF-8" method="post" role="form">
+    <div class="col-md-8">
+      <form class="form-horizontal" accept-charset="UTF-8" method="POST" role="form" action="{{ submit_to }}">
         {% for field in form %}
-          {% if field.type in ['StringField', 'PasswordField'] %}
+          {% if field.type in ['StringField', 'PasswordField', 'EmailField', 'TelField'] %}
             {{ render_field(field) }}
           {% elif field.type in ['HiddenField', 'CSRFTokenField'] %}
             {{ field() }}
@@ -25,10 +25,61 @@
         {% endfor %}
         <div class="form-group">
           <div class="col-sm-offset-4 col-sm-8">
-            <button type="submit" class="btn btn-default">Erstellen</button>
+            <button type="submit" class="btn btn-default">{{ submit_text }}</button>
           </div>
         </div>
       </form>
     </div>
   </div>
+{% endmacro %}
+
+{% macro item_table(create_url, data_url, display_columns) %}
+  <div id="toolbar" class="btn-toolbar" role="toolbar">
+    <div class="btn-group">
+      <a class="btn btn-default" href="{{ create_url }}">
+        <span class="glyphicon glyphicon-plus-sign"></span> Hinzufügen
+      </a>
+    </div>
+  </div>
+  <table class="table table-striped"
+         data-toggle="table"
+         data-cache="false"
+         data-url="{{ data_url }}"
+         data-response-handler="responseHandler"
+         data-id-field="dn"
+         data-search="true"
+         data-pagination="true"
+         data-toolbar="#toolbar">
+    <thead>
+      <tr>
+        {% for field, title in display_columns.items() %}
+          <th data-field="{{ field }}" data-sortable="true">{{ title }}</th>
+        {% endfor %}
+        <th data-field="actions" data-formatter="actionFormatter" data-align="right">Aktionen</th>
+      </tr>
+    </thead>
+  </table>
+{% endmacro %}
+
+{% macro item_table_script(actions) %}
+    <script type="application/javascript">
+      var itemActions = {{ actions|tojson }};
+    </script>
+    <script src="{{ url_for('static', filename="custom/item-table.js") }}"></script>
+{% endmacro %}
+
+{% macro group_table() %}
+    {{ item_table(
+        url_for('.create_group'),
+        url_for('.list_groups'),
+        OrderedDict([('cn', 'Name'), ('createTimestamp', 'Erstellt um'), ('modifyTimestamp', 'Geändert um')]
+    )) }}
+{% endmacro %}
+
+{% macro user_table() %}
+    {{ item_table(
+        url_for('.create_user'),
+        url_for('.list_users'),
+        OrderedDict([('uid', 'Login'), ('givenName', 'Vorname'), ('sn', 'Nachname'), ('mail','E-Mail'), ('mobile', 'Handy'), ('createTimestamp', 'Erstellt um'), ('modifyTimestamp', 'Geändert um')]
+    )) }}
 {% endmacro %}

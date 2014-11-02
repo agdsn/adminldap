@@ -1,0 +1,10 @@
+{% extends 'main.html' %}
+{% import "macros.html" as macros %}
+
+{% block main %}
+  <h1>Mein Benutzerkonto</h1>
+  <h2>Passwort ändern</h2>
+  {{ macros.form(password_form, url_for('.manage_self', action='update-password'), 'Ändern') }}
+  <h2>Daten ändern</h2>
+  {{ macros.form(details_form, url_for('.manage_self', action='update-details'), 'Ändern') }}
+{% endblock %}
