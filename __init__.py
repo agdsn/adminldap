@@ -7,7 +7,7 @@ import operator
 
 from flask import (
     Flask, abort, redirect, render_template, request, url_for, jsonify,
-    make_response)
+    make_response, flash)
 from flask_login import current_user, login_required, LoginManager, UserMixin
 from flask_babel import format_datetime
 from flask_wtf import Form
@@ -194,6 +194,7 @@ def update_details(connection):
                     for attribute, value in details_form.data.iteritems()
                     if value]
         connection.modify_s(current_user.dn, mod_list)
+        flash(u"Details geändert", "success")
     return render_template('self.html', user=current_user,
                            password_form=password_form,
                            details_form=details_form)
