@@ -180,6 +180,7 @@ def update_password(connection):
         password = encrypt_password(password_form.userPassword.data).encode('utf8')
         mod_list = [(ldap.MOD_REPLACE, 'userPassword', password)]
         connection.modify_s(current_user.dn, mod_list)
+        return redirect(url_for('.manage_self'))
     return render_template('self.html', user=current_user,
                            password_form=password_form,
                            details_form=details_form)
