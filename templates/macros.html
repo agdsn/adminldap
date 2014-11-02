@@ -1,5 +1,5 @@
 {% macro render_field(field) %}
-  <div class="form-group">
+  <div class="form-group {{ 'has-error' if field.errors }}">
     {{ field.label(class_='col-md-4 control-label') }}
     <div class="col-md-8">
       {{ field(class_='form-control') }}
