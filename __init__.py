@@ -551,6 +551,7 @@ def create_user(connection):
             'cn': cn,
             'userPassword': password,
             'mail': form.mail.data.encode('utf8'),
+            'mobile': form.mobile.data.encode('utf8'),
         }
         dn = app.config['USER_DN_TEMPLATE'] % entry
         try:
