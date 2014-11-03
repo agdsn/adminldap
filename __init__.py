@@ -559,7 +559,7 @@ def create_user(connection):
         except ldap.ALREADY_EXISTS:
             raise LDAPError(u"Benutzer mit Login '{0}' "
                             u"bereits vorhanden.".format(uid))
-        return redirect(url_for('.view_user', uid=form.uid.data))
+        return redirect(url_for('.view_user', uid=uid))
     return render_template('user_create.html', form=form)
 
 
