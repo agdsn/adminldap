@@ -1,19 +1,21 @@
 {% extends 'main.html' %}
 {% import "macros.html" as macros %}
-{% set itemActions = {
-    'view': {
-        'title': "Ansehen",
-        'glyphicon': 'glyphicon-eye-open',
-    },
-    'edit': {
-        'title': "Bearbeiten",
-        'glyphicon': 'glyphicon-pencil',
-    },
-    'delete': {
-        'title': "Löschen",
-        'glyphicon': 'glyphicon-trash',
-    }
-} %}
+{% set perItemActions = [
+  {
+    'action': 'view',
+    'title': "Ansehen",
+    'glyphicon': 'glyphicon-eye-open',
+  },{
+    'action': 'edit',
+    'title': "Bearbeiten",
+    'glyphicon': 'glyphicon-pencil',
+  },{
+    'action': 'delete',
+    'title': "Löschen",
+    'glyphicon': 'glyphicon-trash',
+    'confirm': True,
+  }
+] %}
 
 {% block main %}
   <h1>Benutzerübersicht</h1>
@@ -21,5 +23,5 @@
 {% endblock %}
 
 {% block page_script %}
-  {{ macros.item_table_script(itemActions) }}
+  {{ macros.item_table_script(perItemActions) }}
 {% endblock %}
