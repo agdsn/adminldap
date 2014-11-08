@@ -3,5 +3,5 @@
 
 {% block main %}
   <h1>Neuen Benutzer erstellen</h1>
-  {{ macros.form(form) }}
+  {{ macros.form(form, url_for('.create_user'), 'Erstellen') }}
 {% endblock %}

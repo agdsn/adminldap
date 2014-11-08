@@ -3,5 +3,5 @@
 
 {% block main %}
   <h1>Neue Gruppe erstellen</h1>
-  {{ macros.form(form) }}
+  {{ macros.form(form, url_for('.create_group'), 'Erstellen') }}
 {% endblock %}

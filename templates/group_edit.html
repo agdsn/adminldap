@@ -1,0 +1,16 @@
+{% extends 'main.html' %}
+{% import "macros.html" as macros %}
+
+{% block main %}
+  <h1>Gruppe {{ group.cn }}</h1>
+
+  <h2>Mitglieder hinzufügen</h2>
+  {{ macros.form_table('add-members', add_members_form, url_for('.edit_group', cn=group.cn, action='add-members'), 'Hinzufügen', add_members_form.dns.name, url_for('.list_non_members', cn=group.cn), [('uid', 'Login'), ('givenName', 'Vorname'), ('sn', 'Nachname')]) }}
+
+  <h2>Mitglieder entfernen</h2>
+  {{ macros.form_table('remove-members', remove_members_form, url_for('.edit_group', cn=group.cn, action='remove-members'), 'Enfernen', remove_members_form.dns.name, url_for('.list_members', cn=group.cn), [('uid', 'Login'), ('givenName', 'Vorname'), ('sn', 'Nachname')]) }}
+{% endblock %}
+
+{% block page_script %}
+  {{ macros.item_table_script([]) }}
+{% endblock %}

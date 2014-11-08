@@ -8,6 +8,7 @@ import operator
 from flask import (
     Flask, abort, redirect, render_template, request, url_for, jsonify,
     make_response, flash)
+from flask.views import View
 from flask_login import current_user, login_required, LoginManager, UserMixin
 from flask_babel import format_datetime
 from flask_wtf import Form
@@ -71,7 +72,10 @@ def load_user(req):
     bind_dn = app.config['BIND_DN']
     bind_pw = app.config['BIND_PW']
     with pool.connection(bind_dn, bind_pw) as conn:
-        user = get_user(conn, uid)
+        try:
+            user = get_user(conn, uid)
+        except NoResults:
+            return None
 
     try:
         with pool.connection(user.dn, auth.password) as conn:
@@ -108,7 +112,7 @@ class MultipleResults(Exception):
 def error_response(message, code):
     if request_wants_json():
         return jsonify(error=message), code
-    return render_template('error.html', error=message), code
+    return render_template('error.html', message=message, code=code), code
 
 
 @app.errorhandler(LDAPError)
@@ -142,62 +146,61 @@ def with_connection(wrapped, instance, args, kwargs):
         return wrapped(*args, **kwargs)
 
 
-class PasswordForm(Form):
+class UserPasswordForm(Form):
     userPassword = PasswordField(u"Passwort",
                                  validators=[DataRequired(), Length(min=8)])
     userPassword_confirm = PasswordField(u"Passwort bestätigen",
                                          validators=[EqualTo("userPassword")])
 
 
-class DetailsForm(Form):
+class UserDetailsForm(Form):
     givenName = StringField(u"Vorname")
     sn = StringField(u"Nachname")
     mail = EmailField(u"E-Mail")
     mobile = TelField(u"Handy")
 
 
-@app.route('/')
-@app.route('/self', methods=['GET', 'POST'])
-@login_required
-@with_connection
-def manage_self(connection):
-    action = request.args.get('action')
-    if action == 'update-password':
-        return update_password(connection)
-    if action == 'update-details':
-        return update_details(connection)
-    password_form = PasswordForm()
-    details_form = DetailsForm(obj=current_user)
-    return render_template('self.html', user=current_user,
-                           password_form=password_form,
-                           details_form=details_form)
+class SelfView(View):
+    methods = ['GET', 'POST']
+
+    def __init__(self):
+        self.password_form = UserPasswordForm(formdata=None)
+        self.details_form = UserDetailsForm(formdata=None, obj=current_user)
+        self.connection = None
+
+    @login_required
+    @with_connection
+    def dispatch_request(self, connection):
+        self.connection = connection
+        action = request.args.get('action')
+        if action == 'update-password':
+            self.update_password()
+        elif action == 'update-details':
+            self.update_details()
+        return render_template('self.html', user=current_user,
+                               password_form=self.password_form,
+                               details_form=self.details_form)
+
+    def update_password(self):
+        self.password_form.process(formdata=request.form)
+        if self.password_form.validate_on_submit():
+            password = encrypt_password(self.password_form.userPassword.data).encode('utf8')
+            mod_list = [(ldap.MOD_REPLACE, 'userPassword', password)]
+            self.connection.modify_s(current_user.dn, mod_list)
+            flash(u"Passwort erfolgreich geändert.", "success")
+
+    def update_details(self):
+        self.details_form.process(formdata=request.form, obj=current_user)
+        if self.details_form.validate_on_submit():
+            mod_list = [(ldap.MOD_REPLACE, attribute, value.encode('utf8'))
+                        for attribute, value in self.details_form.data.items()
+                        if value]
+            self.connection.modify_s(current_user.dn, mod_list)
+            flash(u"Details erfolgreich geändert.", "success")
 
 
-def update_password(connection):
-    password_form = PasswordForm()
-    details_form = DetailsForm(formdata=None, obj=current_user)
-    if password_form.validate_on_submit():
-        password = encrypt_password(password_form.userPassword.data).encode('utf8')
-        mod_list = [(ldap.MOD_REPLACE, 'userPassword', password)]
-        connection.modify_s(current_user.dn, mod_list)
-        return redirect(url_for('.manage_self'))
-    return render_template('self.html', user=current_user,
-                           password_form=password_form,
-                           details_form=details_form)
-
-
-def update_details(connection):
-    password_form = PasswordForm(formdata=None)
-    details_form = DetailsForm(obj=current_user)
-    if details_form.validate_on_submit():
-        mod_list = [(ldap.MOD_REPLACE, attribute, value.encode('utf8'))
-                    for attribute, value in details_form.data.iteritems()
-                    if value]
-        connection.modify_s(current_user.dn, mod_list)
-        flash(u"Details geändert", "success")
-    return render_template('self.html', user=current_user,
-                           password_form=password_form,
-                           details_form=details_form)
+app.add_url_rule('/', view_func=SelfView.as_view('manage_self'))
+app.add_url_rule('/self', endpoint='manage_self')
 
 
 def get_or_none(entry, attribute):
@@ -325,36 +328,126 @@ class DNSelectForm(Form):
         DataRequired(u"Auswahl erforderlich")])
 
 
-@app.route('/users/view/<string:uid>')
-@with_connection
-def view_user(uid, connection):
-    user = get_user(connection, uid)
-    groups = get_groups_of(connection, user)
-    form = DNSelectForm()
-    return render_template('user_view.html', user=user, groups=groups,
-                           form=form)
+class UserEditView(View):
+    methods = ['GET', 'POST']
+
+    def __init__(self):
+        self.details_form = UserDetailsForm(formdata=None)
+        self.remove_groups_form = DNSelectForm(formdata=None)
+        self.add_groups_form = DNSelectForm(formdata=None)
+        self.connection = None
+        self.user = None
+
+    def update_details(self):
+        self.details_form.process(formdata=request.form, obj=self.user)
+
+    def modify_groups(self, mod_type, group_dns=None):
+        messages = set()
+        for group in imap(operator.methodcaller('encode', 'utf8'), group_dns):
+            mod_list = [(mod_type, 'member', [self.user.dn])]
+            messages.add(self.connection.modify(group, mod_list))
+        while messages:
+            res_type, res_data, res_msg_id = self.connection.result2(
+                timeout=app.config['LDAP_TIMEOUT'])
+            assert res_msg_id in messages
+            messages.remove(res_msg_id)
+
+    def add_groups(self):
+        self.details_form.process(obj=self.user)
+        self.add_groups_form.process(formdata=request.form)
+        groups = get_non_groups_of(self.connection, self.user)
+        self.add_groups_form.dns.choices = [(g.dn, g.cn) for g in groups]
+        if self.add_groups_form.validate_on_submit():
+            self.modify_groups(ldap.MOD_ADD, self.add_groups_form.dns.data)
+
+    def remove_groups(self):
+        self.details_form.process(obj=self.user)
+        self.remove_groups_form.process(formdata=request.form)
+        groups = get_groups_of(self.connection, self.user)
+        self.remove_groups_form.dns.choices = [(g.dn, g.cn) for g in groups]
+        if self.remove_groups_form.validate_on_submit():
+            self.modify_groups(ldap.MOD_DELETE,
+                               self.remove_groups_form.dns.data)
+
+    @with_connection
+    def dispatch_request(self, uid, connection):
+        action = request.args.get('action')
+        self.connection = connection
+        self.user = get_user(connection, uid)
+        if action == 'update-details':
+            self.update_details()
+        elif action == 'add-groups':
+            self.add_groups()
+        elif action == 'remove-groups':
+            self.remove_groups()
+        return render_template('user_edit.html', user=self.user,
+                               details_form=self.details_form,
+                               add_groups_form=self.add_groups_form,
+                               remove_groups_form=self.remove_groups_form)
 
 
-@app.route('/groups/view/<string:cn>')
-@with_connection
-def view_group(cn, connection):
-    group = get_group(connection, cn)
-    users = get_members(connection, group)
-    form = DNSelectForm()
-    return render_template('group_view.html', group=group, users=users,
-                           form=form)
+app.add_url_rule('/users/edit/<string:uid>',
+                 view_func=UserEditView.as_view('edit_user'))
 
 
-@app.route('/users/edit/<string:uid>')
-@with_connection
-def edit_user(uid, connection):
-    return redirect(url_for())
+class NameForm(Form):
+    cn = StringField(u"Name", validators=[DataRequired()])
 
 
-@app.route('/groups/edit/<string:cn>')
-@with_connection
-def edit_group(cn, connection):
-    return redirect(url_for())
+class GroupEditView(View):
+    methods = ['GET', 'POST']
+
+    def __init__(self):
+        self.name_form = NameForm(formdata=None)
+        self.add_members_form = DNSelectForm(formdata=None)
+        self.remove_members_form = DNSelectForm(formdata=None)
+        self.connection = None
+        self.group = None
+
+    def update_name(self):
+        self.name_form.process(formdata=request.form, obj=self.group)
+        if self.name_form.validate_on_submit():
+            cn = escape_dn_chars(self.name_form.cn.data.encode('utf8'))
+            self.connection.rename_s(self.group.dn, "cn=" + cn)
+
+    def add_members(self):
+        users = get_non_members(self.connection, self.group)
+        self.add_members_form.dns.choices = [(u.dn, u.uid) for u in users]
+        self.add_members_form.process(formdata=request.form)
+        if self.add_members_form.validate_on_submit():
+            mod_list = [(ldap.MOD_ADD, 'member',
+                         map(operator.methodcaller('encode', 'utf8'),
+                             self.add_members_form.dns.data))]
+            self.connection.modify_s(self.group.dn, mod_list)
+
+    def remove_members(self):
+        users = get_members(self.connection, self.group)
+        self.remove_members_form.dns.choices = [(u.dn, u.uid) for u in users]
+        self.remove_members_form.process(formdata=request.form)
+        if self.remove_members_form.validate_on_submit():
+            mod_list = [(ldap.MOD_DELETE, 'member',
+                         map(operator.methodcaller('encode', 'utf8'),
+                             self.remove_members_form.dns.data))]
+            self.connection.modify_s(self.group.dn, mod_list)
+
+    @with_connection
+    def dispatch_request(self, cn, connection):
+        action = request.args.get('action')
+        self.connection = connection
+        self.group = get_group(connection, cn)
+        if action == 'update-name':
+            self.update_name()
+        elif action == 'add-members':
+            self.add_members()
+        elif action == 'remove-members':
+            self.remove_members()
+        return render_template('group_edit.html', group=self.group,
+                               name_form=self.name_form,
+                               add_members_form=self.add_members_form,
+                               remove_members_form=self.remove_members_form)
+
+app.add_url_rule('/groups/edit/<string:cn>',
+                 view_func=GroupEditView.as_view('edit_group'))
 
 
 @app.route('/users/delete/<string:uid>')
@@ -373,74 +466,11 @@ def delete_group(cn, connection):
     return redirect(url_for('.list_groups'))
 
 
-@app.route('/groups/add-members/<string:cn>',
-           methods=['GET', 'POST'])
-@with_connection
-def add_members(cn, connection):
-    form = DNSelectForm()
-    group = get_group(connection, cn)
-    users = get_non_members(connection, group)
-    form.dns.choices = [(u.dn, u.uid) for u in users]
-    if form.validate_on_submit():
-        values = map(operator.methodcaller('encode', 'utf8'), form.dns.data)
-        connection.modify_s(group.dn, [(ldap.MOD_ADD, 'member', values)])
-        return redirect(url_for('.view_group', cn=cn))
-    return render_template("group_add_members.html", group=group, form=form)
-
-
-@app.route('/groups/remove-members/<string:cn>', methods=['POST'])
-@with_connection
-def remove_members(cn, connection):
-    group = get_group(connection, cn)
-    users = get_members(connection, group)
-    form = DNSelectForm()
-    form.dns.choices = [(u.dn, u.uid) for u in users]
-    if not form.is_submitted():
-        abort(400)
-    if form.validate():
-        values = map(operator.methodcaller('encode', 'utf8'), form.dns.data)
-        connection.modify_s(group.dn, [(ldap.MOD_DELETE, 'member', values)])
-        return redirect(url_for('.view_group', cn=cn))
-    return render_template('group_remove_members.html', form=form)
-
-
-@app.route('/users/add-to-groups/<string:uid>',
-           methods=['GET', 'POST'])
-@with_connection
-def add_to_groups(uid, connection):
-    form = DNSelectForm()
-    user = get_user(connection, uid)
-    groups = get_non_groups_of(connection, user)
-    form.dns.choices = [(g.dn, g.cn) for g in groups]
-    if form.validate_on_submit():
-        values = map(operator.methodcaller('encode', 'utf8'), form.dns.data)
-        connection.modify_s(user.dn, [(ldap.MOD_ADD, 'memberOf', values)])
-        return redirect(url_for('.view_user', uid=uid))
-    return render_template("user_add_groups.html", user=user, form=form)
-
-
-@app.route('/users/remove-from-groups/<string:uid>', methods=['POST'])
-@with_connection
-def remove_from_groups(uid, connection):
-    group = get_group(connection, uid)
-    users = get_members(connection, uid)
-    form = DNSelectForm()
-    form.dns.choices = [(u.dn, u.uid) for u in users]
-    if not form.is_submitted():
-        abort(400)
-    if form.validate():
-        values = map(operator.methodcaller('encode', 'utf8'), form.dns.data)
-        connection.modify_s(group.dn, [(ldap.MOD_DELETE, 'member', values)])
-        return redirect(url_for('.view_group', cn=uid))
-    return render_template('group_remove_members.html', form=form)
-
-
 def user_to_json(user):
     user_dict = user._asdict()
     user_dict['createTimestamp'] = format_datetime(user.createTimestamp)
     user_dict['modifyTimestamp'] = format_datetime(user.modifyTimestamp)
     user_dict.update(actions={
-        'view': url_for('.view_user', uid=user.uid),
         'edit': url_for('.edit_user', uid=user.uid),
         'delete': url_for('.delete_user', uid=user.uid),
     })
@@ -452,7 +482,6 @@ def group_to_json(group):
     group_dict['createTimestamp'] = format_datetime(group.createTimestamp)
     group_dict['modifyTimestamp'] = format_datetime(group.modifyTimestamp)
     group_dict.update(actions={
-        'view': url_for('.view_group', cn=group.cn),
         'edit': url_for('.edit_group', cn=group.cn),
         'delete': url_for('.delete_group', cn=group.cn),
     })
@@ -559,7 +588,7 @@ def create_user(connection):
         except ldap.ALREADY_EXISTS:
             raise LDAPError(u"Benutzer mit Login '{0}' "
                             u"bereits vorhanden.".format(uid))
-        return redirect(url_for('.view_user', uid=uid))
+        return redirect(url_for('.edit_user', uid=uid))
     return render_template('user_create.html', form=form)
 
 
@@ -584,7 +613,7 @@ def create_group(connection):
         except ldap.ALREADY_EXISTS:
             raise LDAPError(u"Gruppe mit Name '{0}' "
                             u"bereits vorhanden.".format(cn))
-        return redirect(url_for('.view_group', cn=cn))
+        return redirect(url_for('.edit_group', cn=cn))
     return render_template('group_create.html', form=form)
 
 
