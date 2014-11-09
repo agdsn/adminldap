@@ -33,7 +33,7 @@
   </div>
 {% endmacro %}
 
-{% macro item_table(create_url, data_url, display_columns) %}
+{% macro item_table(table_id, create_url, data_url, display_columns) %}
   <div id="{{ table_id }}-toolbar" class="btn-toolbar" role="toolbar">
     <div class="btn-group">
       <a class="btn btn-default" href="{{ create_url }}">
@@ -49,7 +49,7 @@
          data-id-field="dn"
          data-search="true"
          data-pagination="true"
-         data-toolbar="#{{ table_id }}toolbar">
+         data-toolbar="#{{ table_id }}-toolbar">
     <thead>
       <tr>
         {% for attribute, title in display_columns.items() %}
@@ -114,6 +114,7 @@
 
 {% macro group_table() %}
     {{ item_table(
+        'groups',
         url_for('.create_group'),
         url_for('.list_groups'),
         OrderedDict([('cn', 'Name'), ('createTimestamp', 'Erstellt um'), ('modifyTimestamp', 'Geändert um')]
@@ -122,6 +123,7 @@
 
 {% macro user_table() %}
     {{ item_table(
+        'users',
         url_for('.create_user'),
         url_for('.list_users'),
         OrderedDict([('uid', 'Login'), ('givenName', 'Vorname'), ('sn', 'Nachname'), ('mail','E-Mail'), ('mobile', 'Handy'), ('createTimestamp', 'Erstellt um'), ('modifyTimestamp', 'Geändert um')]
