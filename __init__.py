@@ -2,7 +2,6 @@
 import collections
 from datetime import datetime
 from itertools import chain, imap
-import re
 import operator
 
 from flask import (
@@ -25,7 +24,7 @@ from werkzeug.datastructures import WWWAuthenticate
 import wrapt
 from wtforms import (
     PasswordField, SelectMultipleField, StringField, TextAreaField)
-from wtforms.validators import DataRequired, Email, EqualTo, Regexp, Length
+from wtforms.validators import DataRequired, Email, EqualTo, Length
 
 
 app = Flask('adminldap')
@@ -156,9 +155,9 @@ class UserPasswordForm(Form):
 
 
 class UserDetailsForm(Form):
-    givenName = StringField(u"Vorname")
-    sn = StringField(u"Nachname")
-    mail = EmailField(u"E-Mail")
+    givenName = StringField(u"Vorname", validators=[DataRequired()])
+    sn = StringField(u"Nachname", validators=[DataRequired()])
+    mail = EmailField(u"E-Mail", validators=[DataRequired(), Email()])
     mobile = TelField(u"Handy")
 
 
@@ -572,15 +571,16 @@ def list_non_members(cn, connection):
     return jsonify(items=map(user_to_json, users))
 
 
-class UserForm(Form):
+class UserCreateForm(Form):
     uid = StringField(u"Login", validators=[DataRequired()])
     givenName = StringField(u"Vorname", validators=[DataRequired()])
     sn = StringField(u"Nachname", validators=[DataRequired()])
-    userPassword = PasswordField(u"Passwort", validators=[DataRequired()])
+    userPassword = PasswordField(u"Passwort",
+                                 validators=[DataRequired(), Length(min=8)])
     userPassword_confirmation = PasswordField(
         u"Passwort bestätigen",
         validators=[DataRequired(), EqualTo('userPassword')])
-    mail = EmailField(u"E-Mail", validators=[Email()])
+    mail = EmailField(u"E-Mail", validators=[DataRequired(), Email()])
     mobile = TelField(u"Handy")
 
 
@@ -591,7 +591,7 @@ def encrypt_password(password):
 @app.route('/users/create', methods=['GET', 'POST'])
 @with_connection
 def create_user(connection):
-    form = UserForm()
+    form = UserCreateForm()
     if form.validate_on_submit():
         uid = escape_dn_chars(form.uid.data.encode('utf8'))
         sn = form.sn.data.encode('utf8')
