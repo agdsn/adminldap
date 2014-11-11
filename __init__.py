@@ -8,7 +8,7 @@ from flask import (
     Flask, abort, redirect, render_template, request, url_for, jsonify,
     make_response, flash)
 from flask.views import View
-from flask_login import current_user, login_required, LoginManager, UserMixin
+from flask_login import current_user, LoginManager, UserMixin
 from flask_babel import format_datetime
 from flask_wtf import Form
 from flask_wtf.html5 import EmailField, TelField
@@ -80,7 +80,7 @@ def load_user(req):
 
     try:
         with pool.connection(user.dn, auth.password) as conn:
-            return AppUser(*get_user(conn, auth.username))
+            return AppUser(*user)
     except ldap.INVALID_CREDENTIALS:
         return None
 
@@ -93,6 +93,12 @@ def handle_unauthorized():
         u'Authentifizierung erforderlich',401))
     response.headers['WWW-Authenticate'] = authenticate.to_header()
     return response
+
+
+@app.before_request
+def before_request():
+    if not current_user.is_authenticated():
+        return login_manager.unauthorized()
 
 
 class LDAPError(Exception):
@@ -169,7 +175,6 @@ class SelfView(View):
         self.details_form = UserDetailsForm(formdata=None, obj=current_user)
         self.connection = None
 
-    @login_required
     @with_connection
     def dispatch_request(self, connection):
         self.connection = connection
@@ -235,6 +240,11 @@ def to_group(res_data):
                  created_at, modified_at)
 
 
+def to_dn(res_data):
+    dn, entry = res_data
+    return dn
+
+
 def get_single_object(connection, filter_string, base, attributes, creator):
     timeout = app.config['LDAP_TIMEOUT']
     try:
@@ -261,6 +271,12 @@ def get_objects(connection, filter_string, base, attributes, creator):
     results = imap(to_entries, connection.allresults(msg_id, timeout))
     group_entries = chain(*results)
     return imap(creator, group_entries)
+
+
+def get_user_dn(connection, uid):
+    user_filter = filter_format(app.config['USER_FILTER'], (uid,))
+    return get_single_object(connection, user_filter,
+                             app.config['USER_BASE_DN'], [], to_dn)
 
 
 def get_user(connection, uid):
