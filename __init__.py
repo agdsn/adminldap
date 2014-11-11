@@ -375,6 +375,7 @@ class UserEditView(SelfView):
         self.add_groups_form.dns.choices = [(g.dn, g.cn) for g in groups]
         if self.add_groups_form.validate_on_submit():
             self.modify_groups(ldap.MOD_ADD, self.add_groups_form.dns.data)
+            flash(u"Gruppen erfolgreich hinzugefügt.", "success")
 
     def remove_groups(self):
         self.details_form.process(obj=self.user)
@@ -453,6 +454,7 @@ class GroupEditView(View):
             if cn != self.group.cn:
                 self.connection.rename_s(self.group.dn,
                                          "cn=" + escape_dn_chars(cn))
+            flash(u"Details erfolgreich geändert.", "success")
 
     def add_members(self):
         users = get_non_members(self.connection, self.group)
@@ -463,6 +465,7 @@ class GroupEditView(View):
                          map(operator.methodcaller('encode', 'utf8'),
                              self.add_members_form.dns.data))]
             self.connection.modify_s(self.group.dn, mod_list)
+            flash(u"Mitglieder erfolgreich hinzugefügt.", "success")
 
     def remove_members(self):
         users = get_members(self.connection, self.group)
@@ -473,6 +476,7 @@ class GroupEditView(View):
                          map(operator.methodcaller('encode', 'utf8'),
                              self.remove_members_form.dns.data))]
             self.connection.modify_s(self.group.dn, mod_list)
+            flash(u"Mitglieder erfolgreich entfernt.", "success")
 
     @with_connection
     def dispatch_request(self, cn, connection):
