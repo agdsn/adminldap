@@ -608,7 +608,7 @@ def encrypt_password(password):
 def create_user(connection):
     form = UserCreateForm()
     if form.validate_on_submit():
-        uid = escape_dn_chars(form.uid.data.encode('utf8'))
+        uid = form.uid.data.encode('utf8')
         sn = form.sn.data.encode('utf8')
         givenName = form.givenName.data.encode('utf8')
         cn = '{0} {1}'.format(givenName, sn)
@@ -623,7 +623,7 @@ def create_user(connection):
             'mail': form.mail.data.encode('utf8'),
             'mobile': form.mobile.data.encode('utf8'),
         }
-        dn = app.config['USER_DN_TEMPLATE'] % entry
+        dn = app.config['USER_DN_TEMPLATE'] % {'uid': escape_dn_chars(uid)}
         try:
             connection.add_s(dn, ldap.modlist.addModlist(entry))
         except ldap.ALREADY_EXISTS:
@@ -644,7 +644,7 @@ def create_group(connection):
             'cn': cn,
             'description': form.description.data.encode('utf8'),
         }
-        dn = app.config['GROUP_DN_TEMPLATE'] % entry
+        dn = app.config['GROUP_DN_TEMPLATE'] % {'cn', escape_dn_chars(cn)}
         try:
             connection.add_s(dn, ldap.modlist.addModlist(entry))
         except ldap.ALREADY_EXISTS:
