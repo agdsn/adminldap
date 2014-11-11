@@ -173,13 +173,17 @@ class SelfView(View):
     methods = ['GET', 'POST']
 
     def __init__(self):
-        self.password_form = UserPasswordForm(formdata=None)
-        self.details_form = UserDetailsForm(formdata=None, obj=current_user)
+        self.user = None
         self.connection = None
+        self.password_form = None
+        self.details_form = None
 
     @with_connection
     def dispatch_request(self, connection):
         self.connection = connection
+        self.user = current_user
+        self.password_form = UserPasswordForm(formdata=None)
+        self.details_form = UserDetailsForm(formdata=None, obj=self.user)
         action = request.args.get('action')
         if action == 'update-password':
             self.update_password()
@@ -192,17 +196,17 @@ class SelfView(View):
     def update_password(self):
         self.password_form.process(formdata=request.form)
         if self.password_form.validate_on_submit():
-            password = encrypt_password(self.password_form.userPassword.data).encode('utf8')
-            mod_list = [(ldap.MOD_REPLACE, 'userPassword', password)]
-            self.connection.modify_s(current_user.dn, mod_list)
+            password = self.password_form.userPassword.data.encode('utf8')
+            encrypted_password = encrypt_password(password)
+            mod_list = [(ldap.MOD_REPLACE, 'userPassword', encrypted_password)]
+            self.connection.modify_s(self.user.dn, mod_list)
             flash(u"Passwort erfolgreich geändert.", "success")
 
     def update_details(self):
         self.details_form.process(formdata=request.form, obj=current_user)
         if self.details_form.validate_on_submit():
-            mod_list = [(ldap.MOD_REPLACE, attribute, value.encode('utf8'))
-                        for attribute, value in self.details_form.data.items()
-                        if value]
+            mod_list = mod_list_from_form(current_user, self.details_form,
+                                          ['givenName', 'sn', 'mail', 'mobile'])
             self.connection.modify_s(current_user.dn, mod_list)
             flash(u"Details erfolgreich geändert.", "success")
 
@@ -346,18 +350,13 @@ class DNSelectForm(Form):
         DataRequired(u"Auswahl erforderlich")])
 
 
-class UserEditView(View):
+class UserEditView(SelfView):
     methods = ['GET', 'POST']
 
     def __init__(self):
-        self.details_form = UserDetailsForm(formdata=None)
-        self.remove_groups_form = DNSelectForm(formdata=None)
-        self.add_groups_form = DNSelectForm(formdata=None)
-        self.connection = None
-        self.user = None
-
-    def update_details(self):
-        self.details_form.process(formdata=request.form, obj=self.user)
+        super(UserEditView, self).__init__()
+        self.add_groups_form = None
+        self.remove_groups_form = None
 
     def modify_groups(self, mod_type, group_dns=None):
         messages = set()
@@ -385,20 +384,28 @@ class UserEditView(View):
         if self.remove_groups_form.validate_on_submit():
             self.modify_groups(ldap.MOD_DELETE,
                                self.remove_groups_form.dns.data)
+            flash(u"Gruppen erfolgreich entfernt.", "success")
 
     @with_connection
     def dispatch_request(self, uid, connection):
         action = request.args.get('action')
         self.connection = connection
         self.user = get_user(connection, uid)
+        self.details_form = UserDetailsForm(formdata=None, obj=self.user)
+        self.password_form = UserPasswordForm(formdata=None)
+        self.add_groups_form = DNSelectForm(formdata=None)
+        self.remove_groups_form = DNSelectForm(formdata=None)
         if action == 'update-details':
             self.update_details()
+        elif action == 'update-password':
+            self.update_password()
         elif action == 'add-groups':
             self.add_groups()
         elif action == 'remove-groups':
             self.remove_groups()
         return render_template('user_edit.html', user=self.user,
                                details_form=self.details_form,
+                               password_form=self.password_form,
                                add_groups_form=self.add_groups_form,
                                remove_groups_form=self.remove_groups_form)
 

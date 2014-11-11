@@ -22,6 +22,9 @@
   </div>
   {{ macros.form(details_form, url_for('.edit_user', uid=user.uid, action='update-details'), 'Ändern') }}
 
+  <h2>Password ändern</h2>
+  {{ macros.form(password_form, url_for('.edit_user', uid=user.uid, action='update-password'), 'Ändern') }}
+
   <h2>Mitgliedschaften entfernen</h2>
   {{ macros.form_table('remove-groups', remove_groups_form, url_for('.edit_user', uid=user.uid, action='remove-groups'), 'Entfernen', remove_groups_form.dns.name, url_for('.list_groups_of', uid=user.uid), [('cn', 'Name')]) }}
 
