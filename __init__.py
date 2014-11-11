@@ -149,6 +149,8 @@ def with_connection(wrapped, instance, args, kwargs):
     bind_dn = app.config['BIND_DN']
     bind_pw = app.config['BIND_PW']
     with pool.connection(bind_dn, bind_pw) as connection:
+        connection.protocol_version = ldap.VERSION3
+        connection.timeout = app.config['LDAP_TIMEOUT']
         kwargs['connection'] = connection
         return wrapped(*args, **kwargs)
 
@@ -246,10 +248,9 @@ def to_dn(res_data):
 
 
 def get_single_object(connection, filter_string, base, attributes, creator):
-    timeout = app.config['LDAP_TIMEOUT']
     try:
         entries = connection.search_st(base, ldap.SCOPE_SUBTREE, filter_string,
-                                       attributes, timeout=timeout)
+                                       attributes)
     except ldap.NO_SUCH_OBJECT:
         raise LDAPError(u"Fehler in LDAP-Struktur: "
                         u"Benötigtes Objekt {0} fehlt".format(base))
@@ -267,8 +268,7 @@ def get_objects(connection, filter_string, base, attributes, creator):
     except ldap.NO_SUCH_OBJECT:
         raise LDAPError(u"Fehler in LDAP-Struktur: "
                         u"Benötigtes Objekt {0} fehlt".format(base))
-    timeout = app.config['LDAP_TIMEOUT']
-    results = imap(to_entries, connection.allresults(msg_id, timeout))
+    results = imap(to_entries, connection.allresults(msg_id))
     group_entries = chain(*results)
     return imap(creator, group_entries)
 
@@ -365,8 +365,7 @@ class UserEditView(View):
             mod_list = [(mod_type, 'member', [self.user.dn])]
             messages.add(self.connection.modify(group, mod_list))
         while messages:
-            res_type, res_data, res_msg_id = self.connection.result2(
-                timeout=app.config['LDAP_TIMEOUT'])
+            res_type, res_data, res_msg_id = self.connection.result2()
             assert res_msg_id in messages
             messages.remove(res_msg_id)
 
