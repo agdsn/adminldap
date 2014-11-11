@@ -23,7 +23,8 @@ import ldappool
 import passlib.hash
 from werkzeug.datastructures import WWWAuthenticate
 import wrapt
-from wtforms import PasswordField, SelectMultipleField, StringField
+from wtforms import (
+    PasswordField, SelectMultipleField, StringField, TextAreaField)
 from wtforms.validators import DataRequired, Email, EqualTo, Regexp, Length
 
 
@@ -37,7 +38,8 @@ app.jinja_env.globals['OrderedDict'] = collections.OrderedDict
 
 USER_DISPLAY_ATTRIBUTES = ['uid', 'givenName', 'sn', 'mail', 'mobile',
                            'createTimestamp', 'modifyTimestamp']
-GROUP_DISPLAY_ATTRIBUTES = ['cn', 'createTimestamp', 'modifyTimestamp']
+GROUP_DISPLAY_ATTRIBUTES = ['cn', 'description',
+                            'createTimestamp', 'modifyTimestamp']
 LDAP_TIME_FORMAT = '%Y%m%d%H%M%SZ'
 
 
@@ -46,7 +48,7 @@ User = collections.namedtuple('User', (
     'createTimestamp', 'modifyTimestamp'))
 
 Group = collections.namedtuple('Group', (
-    'dn', 'cn', 'createTimestamp', 'modifyTimestamp'))
+    'dn', 'cn', 'description', 'createTimestamp', 'modifyTimestamp'))
 
 
 class Connector(ldappool.StateConnector, ldap.resiter.ResultProcessor):
@@ -230,7 +232,8 @@ def to_group(res_data):
                                    LDAP_TIME_FORMAT)
     modified_at = datetime.strptime(entry['modifyTimestamp'][0],
                                     LDAP_TIME_FORMAT)
-    return Group(dn, entry['cn'][0], created_at, modified_at)
+    return Group(dn, entry['cn'][0], get_or_none(entry, 'description'),
+                 created_at, modified_at)
 
 
 def get_single_object(connection, filter_string, base, attributes, creator):
@@ -390,25 +393,45 @@ app.add_url_rule('/users/edit/<string:uid>',
                  view_func=UserEditView.as_view('edit_user'))
 
 
-class NameForm(Form):
-    cn = StringField(u"Name", validators=[DataRequired()])
+def mod_list_from_form(obj, form, attributes):
+    old_entry = {
+        attr: getattr(obj, attr)
+        for attr in attributes
+        if getattr(obj, attr) is not None}
+    new_entry = {
+        attr: getattr(form, attr).data.encode('utf8')
+        for attr in attributes
+        if getattr(form, attr).data
+    }
+    return ldap.modlist.modifyModlist(old_entry, new_entry)
+
+
+class GroupForm(Form):
+    cn = StringField(u"Name",
+                     validators=[DataRequired(), Length(3, 256)])
+    description = TextAreaField(u"Beschreibung", validators=[Length(max=1024)])
 
 
 class GroupEditView(View):
     methods = ['GET', 'POST']
 
     def __init__(self):
-        self.name_form = NameForm(formdata=None)
-        self.add_members_form = DNSelectForm(formdata=None)
-        self.remove_members_form = DNSelectForm(formdata=None)
         self.connection = None
         self.group = None
+        self.details_form = None
+        self.add_members_form = None
+        self.remove_members_form = None
 
-    def update_name(self):
-        self.name_form.process(formdata=request.form, obj=self.group)
-        if self.name_form.validate_on_submit():
-            cn = escape_dn_chars(self.name_form.cn.data.encode('utf8'))
-            self.connection.rename_s(self.group.dn, "cn=" + cn)
+    def update_details(self):
+        self.details_form.process(formdata=request.form, obj=self.group)
+        if self.details_form.validate_on_submit():
+            mod_list = mod_list_from_form(self.group, self.details_form,
+                                          ['description'])
+            self.connection.modify_s(self.group.dn, mod_list)
+            cn = self.details_form.cn.data.encode('utf8')
+            if cn != self.group.cn:
+                self.connection.rename_s(self.group.dn,
+                                         "cn=" + escape_dn_chars(cn))
 
     def add_members(self):
         users = get_non_members(self.connection, self.group)
@@ -435,14 +458,17 @@ class GroupEditView(View):
         action = request.args.get('action')
         self.connection = connection
         self.group = get_group(connection, cn)
-        if action == 'update-name':
-            self.update_name()
+        self.details_form = GroupForm(formdata=None, obj=self.group)
+        self.add_members_form = DNSelectForm(formdata=None)
+        self.remove_members_form = DNSelectForm(formdata=None)
+        if action == 'update-details':
+            self.update_details()
         elif action == 'add-members':
             self.add_members()
         elif action == 'remove-members':
             self.remove_members()
         return render_template('group_edit.html', group=self.group,
-                               name_form=self.name_form,
+                               details_form=self.details_form,
                                add_members_form=self.add_members_form,
                                remove_members_form=self.remove_members_form)
 
@@ -592,11 +618,6 @@ def create_user(connection):
     return render_template('user_create.html', form=form)
 
 
-class GroupForm(Form):
-    cn = StringField(u"Name",
-                     validators=[DataRequired(), Regexp(r'\w+', re.UNICODE)])
-
-
 @app.route('/groups/create', methods=['GET', 'POST'])
 @with_connection
 def create_group(connection):
@@ -606,6 +627,7 @@ def create_group(connection):
         entry = {
             'objectClass': ['groupOfMembers'],
             'cn': cn,
+            'description': form.description.data.encode('utf8'),
         }
         dn = app.config['GROUP_DN_TEMPLATE'] % entry
         try:

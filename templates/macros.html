@@ -15,7 +15,7 @@
     <div class="col-md-8">
       <form class="form-horizontal" accept-charset="UTF-8" method="POST" role="form" action="{{ submit_to }}">
         {% for field in form %}
-          {% if field.type in ['StringField', 'PasswordField', 'EmailField', 'TelField'] %}
+          {% if field.type in ['StringField', 'PasswordField', 'EmailField', 'TelField', 'TextAreaField'] %}
             {{ render_field(field) }}
           {% elif field.type in ['HiddenField', 'CSRFTokenField'] %}
             {{ field() }}
