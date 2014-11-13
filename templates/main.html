@@ -37,6 +37,7 @@
               <li><a href="{{ url_for('.list_users') }}">Benutzer</a></li>
               <li><a href="{{ url_for('.list_groups') }}">Gruppen</a></li>
             </ul>
+            <p class="navbar-right navbar-text">Angemeldet als <a href="{{ url_for('.manage_self') }}">{{ current_user.givenName }} {{ current_user.sn }} ({{ current_user.uid }})</a></p>
           </div><!--/.nav-collapse -->
         </div><!--/.container-fluid -->
       </div>
