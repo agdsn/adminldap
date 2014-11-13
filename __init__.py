@@ -220,6 +220,11 @@ def get_or_none(entry, attribute):
     return values and values[0]
 
 
+def decode_or_none(entry, attribute):
+    values = entry.get(attribute)
+    return values and values[0].decode('utf8')
+
+
 def to_entries(result):
     res_type, res_data, res_msg_id, res_controls = result
     return res_data
@@ -231,9 +236,9 @@ def to_user(res_data):
                                    LDAP_TIME_FORMAT)
     modified_at = datetime.strptime(entry['modifyTimestamp'][0],
                                     LDAP_TIME_FORMAT)
-    return User(dn, entry['uid'][0], get_or_none(entry, 'givenName'),
-                get_or_none(entry, 'sn'), None, get_or_none(entry, 'mail'),
-                get_or_none(entry, 'mobile'), created_at, modified_at)
+    return User(dn, entry['uid'][0], decode_or_none(entry, 'givenName'),
+                decode_or_none(entry, 'sn'), None, decode_or_none(entry, 'mail'),
+                decode_or_none(entry, 'mobile'), created_at, modified_at)
 
 
 def to_group(res_data):
@@ -242,7 +247,7 @@ def to_group(res_data):
                                    LDAP_TIME_FORMAT)
     modified_at = datetime.strptime(entry['modifyTimestamp'][0],
                                     LDAP_TIME_FORMAT)
-    return Group(dn, entry['cn'][0], get_or_none(entry, 'description'),
+    return Group(dn, entry['cn'][0], decode_or_none(entry, 'description'),
                  created_at, modified_at)
 
 
