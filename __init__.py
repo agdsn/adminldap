@@ -655,7 +655,7 @@ def create_group(connection):
             'cn': cn,
             'description': form.description.data.encode('utf8'),
         }
-        dn = app.config['GROUP_DN_TEMPLATE'] % {'cn', escape_dn_chars(cn)}
+        dn = app.config['GROUP_DN_TEMPLATE'] % {'cn': escape_dn_chars(cn)}
         try:
             connection.add_s(dn, ldap.modlist.addModlist(entry))
         except ldap.ALREADY_EXISTS:
