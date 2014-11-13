@@ -140,6 +140,16 @@ def handle_invalid_credentials(e):
     return error_response(u"Falsche Zugangsdaten.", 503)
 
 
+@app.errorhandler(ldap.SERVER_DOWN)
+def handle_server_down(e):
+    return error_response(u"Server down.", 503)
+
+
+@app.errorhandler(ldap.INSUFFICIENT_ACCESS)
+def handle_insufficient_access(e):
+    return error_response(u"Keine Berechtigung.", 401)
+
+
 @app.errorhandler(NoResults)
 def handle_no_results(e):
     return error_response(
