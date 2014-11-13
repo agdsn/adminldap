@@ -70,17 +70,19 @@ def load_user(req):
     if not auth:
         return None
     uid = escape_dn_chars(auth.username)
-    bind_dn = app.config['BIND_DN']
-    bind_pw = app.config['BIND_PW']
-    with pool.connection(bind_dn, bind_pw) as conn:
+    # Bind anonymously to find dn
+    with pool.connection('', '') as conn:
         try:
-            user = get_user(conn, uid)
+            dn = get_user_dn(conn, uid)
         except NoResults:
             return None
 
+    # Bind as user
     try:
-        with pool.connection(user.dn, auth.password) as conn:
-            return AppUser(*user)
+        with pool.connection(dn, auth.password) as conn:
+            user = get_user(conn, uid)._asdict()
+            user['userPassword'] = auth.password
+            return AppUser(**user)
     except ldap.INVALID_CREDENTIALS:
         return None
 
@@ -146,12 +148,10 @@ def handle_no_results(e):
 
 @wrapt.decorator
 def with_connection(wrapped, instance, args, kwargs):
-    bind_dn = app.config['BIND_DN']
-    bind_pw = app.config['BIND_PW']
-    with pool.connection(bind_dn, bind_pw) as connection:
-        connection.protocol_version = ldap.VERSION3
-        connection.timeout = app.config['LDAP_TIMEOUT']
-        kwargs['connection'] = connection
+    with pool.connection(current_user.dn, current_user.userPassword) as conn:
+        conn.protocol_version = ldap.VERSION3
+        conn.timeout = app.config['LDAP_TIMEOUT']
+        kwargs['connection'] = conn
         return wrapped(*args, **kwargs)
 
 
