@@ -33,13 +33,11 @@
   </div>
 {% endmacro %}
 
-{% macro item_table(table_id, create_url, data_url, display_columns) %}
+{% macro item_table(table_id, data_url, display_columns, actions=False) %}
   <div id="{{ table_id }}-toolbar" class="btn-toolbar" role="toolbar">
-    <div class="btn-group">
-      <a class="btn btn-default" href="{{ create_url }}">
-        <span class="glyphicon glyphicon-plus-sign"></span> Hinzufügen
-      </a>
-    </div>
+    {% if caller %}
+      {{ caller() }}
+    {% endif %}
   </div>
   <table id="{{ table_id }}" class="table table-striped"
          data-toggle="table"
@@ -52,10 +50,12 @@
          data-toolbar="#{{ table_id }}-toolbar">
     <thead>
       <tr>
-        {% for attribute, title in display_columns.items() %}
+        {% for attribute, title in display_columns %}
           <th data-field="{{ attribute }}" data-sortable="true">{{ title }}</th>
         {% endfor %}
-        <th data-field="actions" data-formatter="actionFormatter" data-align="right">Aktionen</th>
+        {% if actions %}
+          <th data-field="actions" data-formatter="actionFormatter" data-align="right">Aktionen</th>
+        {% endif %}
       </tr>
     </thead>
   </table>
@@ -113,19 +113,34 @@
 {% endmacro %}
 
 {% macro group_table() %}
-    {{ item_table(
-        'groups',
-        url_for('.create_group'),
-        url_for('.list_groups'),
-        OrderedDict([('cn', 'Name'), ('createTimestamp', 'Erstellt um'), ('modifyTimestamp', 'Geändert um')]
-    )) }}
+  {% call item_table('groups',
+                     url_for('.list_groups'),
+                     [('cn', 'Name'), ('createTimestamp', 'Erstellt um'), ('modifyTimestamp', 'Geändert um')],
+                     True) %}
+    <div class="btn-group">
+      <a class="btn btn-default" href="{{ url_for('.create_group') }}">
+        <span class="glyphicon glyphicon-plus-sign"></span> Hinzufügen
+      </a>
+    </div>
+  {% endcall %}
 {% endmacro %}
 
 {% macro user_table() %}
-    {{ item_table(
+  {% call item_table(
         'users',
-        url_for('.create_user'),
         url_for('.list_users'),
-        OrderedDict([('uid', 'Login'), ('givenName', 'Vorname'), ('sn', 'Nachname'), ('mail','E-Mail'), ('mobile', 'Handy'), ('createTimestamp', 'Erstellt um'), ('modifyTimestamp', 'Geändert um')]
-    )) }}
+        [('uid', 'Login'), ('givenName', 'Vorname'), ('sn', 'Nachname'), ('mail','E-Mail'), ('mobile', 'Handy'), ('createTimestamp', 'Erstellt um'), ('modifyTimestamp', 'Geändert um')],
+        True) %}
+    <div class="btn-group">
+      <a class="btn btn-default" href="{{ url_for('.create_user') }}">
+        <span class="glyphicon glyphicon-plus-sign"></span> Hinzufügen
+      </a>
+    </div>
+  {% endcall %}
+{% endmacro %}
+
+{% macro groups_of_table(uid) %}
+  {{ item_table('groups-of',
+                url_for('.list_groups_of', uid=uid),
+                [('cn', 'Name'), ('createTimestamp', 'Erstellt um'), ('modifyTimestamp', 'Geändert um')]) }}
 {% endmacro %}

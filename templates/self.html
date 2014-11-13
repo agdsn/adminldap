@@ -7,4 +7,10 @@
   {{ macros.form(password_form, url_for('.manage_self', action='update-password'), 'Ändern') }}
   <h2>Daten ändern</h2>
   {{ macros.form(details_form, url_for('.manage_self', action='update-details'), 'Ändern') }}
+  <h2>Meine Gruppen</h2>
+  {{ macros.groups_of_table(current_user.uid) }}
+{% endblock %}
+
+{% block page_script %}
+  {{ macros.item_table_script([]) }}
 {% endblock %}
