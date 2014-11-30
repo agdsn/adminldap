@@ -70,10 +70,13 @@ def load_user(req):
     if not auth:
         return None
     uid = escape_dn_chars(auth.username)
-    # Bind anonymously to find dn
-    with pool.connection('', '') as conn:
+    bind_dn = app.config['BIND_DN']
+    bind_pw = app.config['BIND_PW']
+    with pool.connection(bind_dn, bind_pw) as conn:
         try:
             dn = get_user_dn(conn, uid)
+        except ldap.INVALID_CREDENTIALS:
+            return LDAPError(u"Falsche Zugangsdaten für DN-Suche.")
         except NoResults:
             return None
 
