@@ -1,0 +1,3 @@
+include adminldap/app.cfg
+recursive-include adminldap/static *.js *.css * *.eot *.svg *.ttf *.woff
+recursive-include adminldap/templates *.html
