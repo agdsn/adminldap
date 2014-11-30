@@ -1,8 +1,0 @@
-Flask
-Flask-Babel
-Flask-Login
-Flask-WTF
-ldappool
-passlib
-python-ldap
-wrapt

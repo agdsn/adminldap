@@ -8,4 +8,14 @@ setup(name='AdminLDAP',
       author_email='sebastian.schrader@wh2.tu-dresden.de',
       packages=['adminldap'],
       include_package_data=True,
-      zip_safe=False)
+      zip_safe=False,
+      install_requires=[
+            'Flask',
+            'Flask-Babel',
+            'Flask-Login',
+            'Flask-WTF',
+            'ldappool',
+            'passlib',
+            'python-ldap',
+            'wrapt',
+      ])
