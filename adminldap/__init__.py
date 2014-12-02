@@ -28,7 +28,8 @@ from wtforms.validators import DataRequired, Email, EqualTo, Length
 
 
 app = Flask('adminldap')
-app.config.from_pyfile('app.cfg')
+app.config.from_object('adminldap.defaults.Settings')
+app.config.from_envvar('ADMINLDAP_SETTINGS', silent=True)
 login_manager = LoginManager()
 login_manager.init_app(app)
 babel = Babel()
