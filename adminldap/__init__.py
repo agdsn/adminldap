@@ -249,8 +249,9 @@ def to_user(res_data):
                                    LDAP_TIME_FORMAT)
     modified_at = datetime.strptime(entry['modifyTimestamp'][0],
                                     LDAP_TIME_FORMAT)
-    return User(dn, entry['uid'][0], decode_or_none(entry, 'givenName'),
-                decode_or_none(entry, 'sn'), None, decode_or_none(entry, 'mail'),
+    return User(dn, decode_or_none(entry, 'uid'),
+                decode_or_none(entry, 'givenName'), decode_or_none(entry, 'sn'),
+                None, decode_or_none(entry, 'mail'),
                 decode_or_none(entry, 'mobile'), created_at, modified_at)
 
 
@@ -260,8 +261,8 @@ def to_group(res_data):
                                    LDAP_TIME_FORMAT)
     modified_at = datetime.strptime(entry['modifyTimestamp'][0],
                                     LDAP_TIME_FORMAT)
-    return Group(dn, entry['cn'][0], decode_or_none(entry, 'description'),
-                 created_at, modified_at)
+    return Group(dn, decode_or_none(entry, 'cn'),
+                 decode_or_none(entry, 'description'), created_at, modified_at)
 
 
 def to_dn(res_data):
@@ -271,8 +272,8 @@ def to_dn(res_data):
 
 def get_single_object(connection, filter_string, base, attributes, creator):
     try:
-        entries = connection.search_st(base, ldap.SCOPE_SUBTREE, filter_string,
-                                       attributes)
+        entries = connection.search_st(base.encode('utf8'), ldap.SCOPE_SUBTREE,
+                                       filter_string.encode('utf8'), attributes)
     except ldap.NO_SUCH_OBJECT:
         raise LDAPError(u"Fehler in LDAP-Struktur: "
                         u"Benötigtes Objekt {0} fehlt".format(base))
@@ -285,8 +286,8 @@ def get_single_object(connection, filter_string, base, attributes, creator):
 
 def get_objects(connection, filter_string, base, attributes, creator):
     try:
-        msg_id = connection.search(base, ldap.SCOPE_SUBTREE, filter_string,
-                                   attributes)
+        msg_id = connection.search(base.encode('utf8'), ldap.SCOPE_SUBTREE,
+                                   filter_string.encode('utf8'), attributes)
     except ldap.NO_SUCH_OBJECT:
         raise LDAPError(u"Fehler in LDAP-Struktur: "
                         u"Benötigtes Objekt {0} fehlt".format(base))
