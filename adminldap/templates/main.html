@@ -49,6 +49,14 @@
       {% endwith %}
 
       {% block main %}{% endblock %}
+
+      <footer class="navbar navbar-default">
+        <div class="container-fluid">
+          <div class="collapse navbar-collapse">
+            <p class="navbar-right navbar-text">Projektseite: <a href="https://github.com/agdsn/adminldap">github.com/agdsn/adminldap</a></p>
+          </div>
+        </div>
+      </footer>
     </div> <!-- /container -->
 
     <script src="{{ url_for('static', filename='jquery/jquery.min.js') }}"></script>
