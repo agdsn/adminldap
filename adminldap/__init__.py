@@ -68,7 +68,7 @@ class AppUser(User, UserMixin):
 @login_manager.request_loader
 def load_user(req):
     auth = req.authorization
-    if not auth:
+    if not auth or not auth.password:
         return None
     uid = escape_dn_chars(auth.username)
     bind_dn = app.config['BIND_DN']
