@@ -203,7 +203,7 @@ class SelfView(View):
             self.update_password()
         elif action == 'update-details':
             self.update_details()
-        return render_template('self.html', user=current_user,
+        return render_template('self.html', user=self.user,
                                password_form=self.password_form,
                                details_form=self.details_form)
 
@@ -217,11 +217,11 @@ class SelfView(View):
             flash(u"Passwort erfolgreich geändert.", "success")
 
     def update_details(self):
-        self.details_form.process(formdata=request.form, obj=current_user)
+        self.details_form.process(formdata=request.form, obj=self.user)
         if self.details_form.validate_on_submit():
-            mod_list = mod_list_from_form(current_user, self.details_form,
+            mod_list = mod_list_from_form(self.user, self.details_form,
                                           ['givenName', 'sn', 'mail', 'mobile'])
-            self.connection.modify_s(current_user.encode('utf8'), mod_list)
+            self.connection.modify_s(self.user.dn.encode('utf8'), mod_list)
             flash(u"Details erfolgreich geändert.", "success")
 
 
