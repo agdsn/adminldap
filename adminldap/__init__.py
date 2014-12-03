@@ -213,7 +213,7 @@ class SelfView(View):
             password = self.password_form.userPassword.data.encode('utf8')
             encrypted_password = encrypt_password(password)
             mod_list = [(ldap.MOD_REPLACE, 'userPassword', encrypted_password)]
-            self.connection.modify_s(self.user.dn, mod_list)
+            self.connection.modify_s(self.user.dn.encode('utf8'), mod_list)
             flash(u"Passwort erfolgreich geändert.", "success")
 
     def update_details(self):
@@ -221,7 +221,7 @@ class SelfView(View):
         if self.details_form.validate_on_submit():
             mod_list = mod_list_from_form(current_user, self.details_form,
                                           ['givenName', 'sn', 'mail', 'mobile'])
-            self.connection.modify_s(current_user.dn, mod_list)
+            self.connection.modify_s(current_user.encode('utf8'), mod_list)
             flash(u"Details erfolgreich geändert.", "success")
 
 
@@ -250,7 +250,7 @@ def to_user(res_data):
                                    LDAP_TIME_FORMAT)
     modified_at = datetime.strptime(entry['modifyTimestamp'][0],
                                     LDAP_TIME_FORMAT)
-    return User(dn, decode_or_none(entry, 'uid'),
+    return User(dn.decode('utf8'), decode_or_none(entry, 'uid'),
                 decode_or_none(entry, 'givenName'), decode_or_none(entry, 'sn'),
                 None, decode_or_none(entry, 'mail'),
                 decode_or_none(entry, 'mobile'), created_at, modified_at)
@@ -262,7 +262,7 @@ def to_group(res_data):
                                    LDAP_TIME_FORMAT)
     modified_at = datetime.strptime(entry['modifyTimestamp'][0],
                                     LDAP_TIME_FORMAT)
-    return Group(dn, decode_or_none(entry, 'cn'),
+    return Group(dn.decode('utf8'), decode_or_none(entry, 'cn'),
                  decode_or_none(entry, 'description'), created_at, modified_at)
 
 
@@ -381,7 +381,7 @@ class UserEditView(SelfView):
     def modify_groups(self, mod_type, group_dns=None):
         messages = set()
         for group in imap(operator.methodcaller('encode', 'utf8'), group_dns):
-            mod_list = [(mod_type, 'member', [self.user.dn])]
+            mod_list = [(mod_type, 'member', [self.user.dn.encode('utf8')])]
             messages.add(self.connection.modify(group, mod_list))
         while messages:
             res_type, res_data, res_msg_id = self.connection.result2()
