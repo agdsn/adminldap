@@ -469,10 +469,10 @@ class GroupEditView(View):
         if self.details_form.validate_on_submit():
             mod_list = mod_list_from_form(self.group, self.details_form,
                                           ['description'])
-            self.connection.modify_s(self.group.dn, mod_list)
+            self.connection.modify_s(self.group.dn.encode('utf8'), mod_list)
             cn = self.details_form.cn.data.encode('utf8')
             if cn != self.group.cn:
-                self.connection.rename_s(self.group.dn,
+                self.connection.rename_s(self.group.dn.encode('utf8'),
                                          "cn=" + escape_dn_chars(cn))
             flash(u"Details erfolgreich geändert.", "success")
 
@@ -484,7 +484,7 @@ class GroupEditView(View):
             mod_list = [(ldap.MOD_ADD, 'member',
                          map(operator.methodcaller('encode', 'utf8'),
                              self.add_members_form.dns.data))]
-            self.connection.modify_s(self.group.dn, mod_list)
+            self.connection.modify_s(self.group.dn.encode('utf8'), mod_list)
             flash(u"Mitglieder erfolgreich hinzugefügt.", "success")
 
     def remove_members(self):
@@ -495,7 +495,7 @@ class GroupEditView(View):
             mod_list = [(ldap.MOD_DELETE, 'member',
                          map(operator.methodcaller('encode', 'utf8'),
                              self.remove_members_form.dns.data))]
-            self.connection.modify_s(self.group.dn, mod_list)
+            self.connection.modify_s(self.group.dn.encode('utf8'), mod_list)
             flash(u"Mitglieder erfolgreich entfernt.", "success")
 
     @with_connection
