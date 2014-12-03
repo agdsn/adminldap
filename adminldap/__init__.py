@@ -525,7 +525,7 @@ app.add_url_rule('/groups/edit/<string:cn>',
 @with_connection
 def delete_user(uid, connection):
     user = get_user(connection, uid)
-    connection.delete_s(user.dn)
+    connection.delete_s(user.dn.encode('utf8'))
     return redirect(url_for('.list_users'))
 
 
@@ -533,7 +533,7 @@ def delete_user(uid, connection):
 @with_connection
 def delete_group(cn, connection):
     group = get_group(connection, cn)
-    connection.delete_s(group.dn)
+    connection.delete_s(group.dn.encode('utf8'))
     return redirect(url_for('.list_groups'))
 
 
