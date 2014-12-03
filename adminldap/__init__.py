@@ -654,7 +654,8 @@ def create_user(connection):
             'mail': form.mail.data.encode('utf8'),
             'mobile': form.mobile.data.encode('utf8'),
         }
-        dn = app.config['USER_DN_TEMPLATE'] % {'uid': escape_dn_chars(uid)}
+        dn_template = app.config['USER_DN_TEMPLATE'].encode('utf8')
+        dn = dn_template % {'uid': escape_dn_chars(uid)}
         try:
             connection.add_s(dn, ldap.modlist.addModlist(entry))
         except ldap.ALREADY_EXISTS:
@@ -675,7 +676,8 @@ def create_group(connection):
             'cn': cn,
             'description': form.description.data.encode('utf8'),
         }
-        dn = app.config['GROUP_DN_TEMPLATE'] % {'cn': escape_dn_chars(cn)}
+        dn_template = app.config['GROUP_DN_TEMPLATE'].encode('utf8')
+        dn = dn_template % {'cn': escape_dn_chars(cn)}
         try:
             connection.add_s(dn, ldap.modlist.addModlist(entry))
         except ldap.ALREADY_EXISTS:
